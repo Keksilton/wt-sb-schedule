@@ -1,11 +1,6 @@
 $(document).ready(function () {
     const now = moment();
     const moscow = now.clone().utcOffset('+03:00');
-    const battleRatings = [4, 4.7, 5.3, 6, 6.7, 7.3, 8, 9, 10];
-    const timeFramesData = [
-        [4, 10],
-        [17, 1]
-    ]
 
     function setup() {
         fillTimeline();
