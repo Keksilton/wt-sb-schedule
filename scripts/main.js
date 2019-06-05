@@ -2,142 +2,128 @@ $(document).ready(function () {
     const now = moment();
     const moscow = now.clone().utcOffset('+03:00');
 
+    const locale = window.navigator.userLanguage || window.navigator.language;
+
     function setup() {
         fillTimeline();
         fillTimeframes();
     }
 
     function fillTimeframes() {
-        $timeframes = $('#timeframes');
-        const children = $timeframes.children();
-        for (let i = 0; i < children.length; ++i) {
-            const $child = $(children[i]);
-            const index = $child.data('timeframe');
-            const a = timeFramesData[index];
-            const timeframe = new Timeframe(a[0], a[1]);
-            timeframe.attach($child);
+        let timeframeRoot = $('#timeframes')[0];
+        let timeframes = [];
+        let key = 0xBE6111;
+        for (let tf of timeFramesData) {
+            const timeframeElement = React.createElement(Timeframe, { key: key++, timeframe: { start: tf[0], end: tf[1] } });
+            timeframes.push(timeframeElement);
         }
+        ReactDOM.render(timeframes, timeframeRoot);
     }
 
-    class Timeframe {
-        $node;
-        updater;
-        constructor(start, end) {
-            this.duration = end - start + (end < start ? 24 : 0);
-            this.start = moment().utcOffset('+03:00').startOf('hour').hour(start).local();
-            this.end = this.start.clone().add(this.duration, 'hours');
-        }
+    class Timeframe extends React.Component {
+        constructor(props) {
+            super(props);
 
-        get active() { return this.$node.attr('active') == true; }
-        set active(val) { this.$node.attr('active', val ? true : null); }
-
-        attach($node) {
-            this.$node = $node;
-            if (this.updater) {
-                clearInterval(this.updater);
-            }
-            this.updater = setInterval(() => {
-                this.updateActive();
-            }, 60 * 10);
-            this.updateContent();
-        }
-
-        update() {
-            const now = moment();
-            if (now.diff(this.start, 'hours') > this.duration) {
-                this.start.add(Math.floor(this.duration / 24) + 1, 'days');
-                this.end = this.start.clone().add(this.duration, 'hours');
-                this.updateContent();
+            this.state = {
+                start: moment().tz('Europe/Moscow').startOf('hour').hour(props.timeframe.start).local().locale(locale),
+                duration: props.timeframe.end - props.timeframe.start + (props.timeframe.end < props.timeframe.start ? 24 : 0)
             }
         }
 
-        updateContent() {
-            this.$node.text(`From ${this.start.format('LT')} to ${this.end.format('LT')}`);
+        tick() {
+            this.setState(state => {
+                const now = moment();
+                state.start = state.start.add(moment().diff(state.start, 'hours') > state.duration ? 1 : 0, 'days');
+                state.active = now > state.start && now.diff(state.start, 'hours') < state.duration;
+                return state;
+            });
+        }
+        componentDidMount() {
+            this.tick();
+            this.interval = setInterval(() => this.tick(), 60 * 1000);
         }
 
-        updateActive() {
-            if (!this.$node) {
-                console.warn('attach timeframe to a node first');
-                return;
-            }
-            const now = moment();
-            this.update();
-            this.active = this.start <= now && this.end >= now;
+        componentWillUnmount() {
+            clearInterval(this.interval);
+        }
+
+        render() {
+            return React.createElement('div', { active: this.state.active ? 'true' : null }, 'From ', this.state.start.format('LT'), ' to ', this.state.start.clone().add(this.state.duration, 'hours').format('LT'));
         }
     }
 
     function fillTimeline() {
-        const season = new Season();
-        const content = 'Prepare your AAs';
-        for (let week of season.weeks) {
-            addTimelineNode(`Squadron battles, ${week.br.toFixed(1)}`, week.start.format('LL'), content)
-                .setWeek(week, 60 * 100)
-        }
-        addTimelineNode('Season end.', season.end.format('LL'), 'AAs can rest now')
+        const timelineRoot = $('#brChangeTimeline')[0];
+        const timelineElements = React.createElement(Timeline, { timeframe: { firstStart: timeFramesData[0][0], lastEnd: timeFramesData[timeFramesData.length - 1][0] } });
+        ReactDOM.render(timelineElements, timelineRoot);
     };
 
-    function addTimelineNode(headline, dateText, content) {
-        const $timeline = $('#brChangeTimeline');
-        const node = new TimelineNode(headline, dateText, content);
-        return node.attach($timeline);
-    }
+    class Timeline extends React.Component {
+        _key = 0x6F2F;
+        constructor(props) {
+            super(props);
 
-    class TimelineNode {
-        activeTimer;
-        $itemNode;
-        constructor(headline, dateString, content) {
-            this.$headlineNode = $('<a></a>')
-                .attr('class', 'timeline-header')
-                .text(headline);
-            this.$dateNode = $('<a></a>')
-                .addClass('float-right')
-                .text(dateString);
-            this.$contentNode = $('<p></p>')
-                .text(content);
-            this.$itemNode = $('<li></li>')
-                .append(this.$headlineNode)
-                .append(this.$dateNode)
-                .append(this.$contentNode);
-        }
-
-        attach($timeline) {
-            $timeline.append(this.$itemNode);
-            return this;
-        }
-
-        setWeek(week, interval) {
-            if (this.activeTimer != null) {
-                clearInterval(this.activeTimer)
-                this.activeTimer = null;
-            }
-            const activeHandler = () => {
-                const now = moment();
-                this.$itemNode.attr('active', now >= week.start && now <= week.end ? true : null);
-            };
-            activeHandler();
-            this.activeTimer = setInterval(activeHandler, interval);
-            return this;
-        }
-    }
-
-    class Season {
-        constructor() {
-            this.start = moscow.clone().startOf('month').subtract(moscow.month() % 2, 'month').hour(timeFramesData[0][0]).local();
-            this.end = moscow.clone().startOf('month').add((moscow.month() + 1) % 2, 'month').endOf('month').startOf('day').add(1, 'day').hour(timeFramesData[1][1]).local();
-            this.weeks = battleRatings.map((br, i) => new Week(this, i, br));
-        }
-    }
-
-    class Week {
-        constructor(season, weekIndex, br) {
-            this.start = season.start.clone().add(weekIndex, 'weeks');
-            this.end = season.end.diff(this.start, 'days') > 7 ? this.start.clone().add(7, 'day') : season.end.clone();
-            this.br = br;
-        }
-
-        get isCurrent() {
             const now = moment();
-            return now >= this.start && this.end >= now;
+            const moscow = now;
+
+            this.state = {
+                timeframe: {
+                    start: props.timeframe.firstStart,
+                    end: props.timeframe.lastEnd
+                }
+            }
+        }
+
+        tick() {
+            const now = moment();
+            const moscow = now.clone().tz('Europe/Moscow');
+
+            this.setState(state => {
+                let data = {
+                    timeframe: state.timeframe,
+                    season: {
+                        start: moscow.clone().startOf('month').subtract(moscow.month() % 2, 'month').hour(state.timeframe.start).local().locale(locale),
+                        end: moscow.clone().startOf('month').add((moscow.month() + 1) % 2, 'month').endOf('month').startOf('day').add(Math.floor((state.timeframe.end - state.timeframe.start) / 24), 'day').hour(state.timeframe.end).local().locale(locale)
+                    }
+                };
+                data.weeks = battleRatings.map((br, i) => ({
+                    start: data.season.start.clone().add(i, 'weeks'),
+                    br: br,
+                    index: i
+                })).map(week => {
+                    week.end = data.season.end.diff(week.start, 'days') > 7 ? week.start.clone().add(1, 'week').hour(data.season.end.hour()) : data.season.end.clone();
+                    week.active = now >= week.start && now <= week.end;
+                    return week;
+                });
+                return data;
+            });
+        }
+
+        componentDidMount() {
+            this.tick();
+            this.interval = setInterval(() => this.tick(), 60 * 60 * 1000);
+        }
+
+        componentWillUnmount() {
+            clearInterval(this.interval);
+        }
+
+        static generateNode(title, date, content, active) {
+            return React.createElement('li', { key: Math.random() * 100.5, active: active ? 'true' : null }, [
+                React.createElement('a', { className: 'timeline-header', key: Math.random() * 100.5 }, title),
+                React.createElement('a', { className: 'float-right', key: Math.random() * 100.5 }, date),
+                React.createElement('p', { key: Math.random() * 100.5 }, content)
+            ]);
+        }
+
+        render() {
+            if (this.state.weeks) {
+                let nodes = this.state.weeks.map(week => Timeline.generateNode(`Squadron battles, ${week.br.toFixed(1)}`, week.start.format('LL'), 'Prepare your AAs', week.active));
+                nodes.push(Timeline.generateNode(`Season end`, this.state.season.end.format('LL'), 'AAs can rest now', false));
+                return React.createElement('ul', { className: 'timeline p-3' }, nodes);
+            } else {
+                return React.createElement('div', {}, 'Loading weeks...');
+            }
         }
     }
 
