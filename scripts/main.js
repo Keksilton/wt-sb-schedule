@@ -1,7 +1,4 @@
 $(document).ready(function () {
-    const now = moment();
-    const moscow = now.clone().utcOffset('+03:00');
-
     const locale = window.navigator.userLanguage || window.navigator.language;
 
     function setup() {
@@ -33,7 +30,7 @@ $(document).ready(function () {
         tick() {
             this.setState(state => {
                 const now = moment();
-                state.start = state.start.add(moment().diff(state.start, 'hours') > state.duration ? 1 : 0, 'days');
+                state.start = state.start.add(now.diff(state.start, 'hours') > state.duration ? 1 : 0, 'days');
                 state.active = now > state.start && now.diff(state.start, 'hours') < state.duration;
                 return state;
             });
@@ -62,9 +59,6 @@ $(document).ready(function () {
         _key = 0x6F2F;
         constructor(props) {
             super(props);
-
-            const now = moment();
-            const moscow = now;
 
             this.state = {
                 timeframe: {
