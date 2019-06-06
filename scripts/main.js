@@ -20,9 +20,11 @@ $(document).ready(function () {
     class Timeframe extends React.Component {
         constructor(props) {
             super(props);
+            const now = moment();
+            const moscow = now.clone().tz('Europe/Moscow');
 
             this.state = {
-                start: moment().tz('Europe/Moscow').startOf('hour').hour(props.timeframe.start).local().locale(locale),
+                start: moscow.clone().startOf('hour').hour(props.timeframe.start).local().locale(locale).subtract(moscow.day() != now.day() ? (now.utcOffset() < moscow.utcOffset() ? 1 : -1) : 0, 'days'),
                 duration: props.timeframe.end - props.timeframe.start + (props.timeframe.end < props.timeframe.start ? 24 : 0)
             }
         }
