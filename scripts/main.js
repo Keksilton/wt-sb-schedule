@@ -82,9 +82,10 @@ $(document).ready(function () {
                         end: moscow.clone().startOf('month').add((moscow.month() + 1) % 2, 'month').endOf('month').startOf('day').add(Math.floor((state.timeframe.end - state.timeframe.start) / 24), 'day').hour(state.timeframe.end).local().locale(locale)
                     }
                 };
-                data.weeks = battleRatings.map((br, i) => ({
+                data.weeks = battleRatings.map((desc, i) => ({
                     start: data.season.start.clone().add(i, 'weeks'),
-                    br: br,
+                    br: desc.br,
+                    message: desc.message,
                     index: i
                 })).map(week => {
                     week.end = data.season.end.diff(week.start, 'days') > 7 ? week.start.clone().add(1, 'week').hour(data.season.end.hour()) : data.season.end.clone();
@@ -114,8 +115,8 @@ $(document).ready(function () {
 
         render() {
             if (this.state.weeks) {
-                let nodes = this.state.weeks.map(week => Timeline.generateNode(`Squadron battles, ${week.br.toFixed(1)}`, week.start.format('LL'), 'Prepare your AAs', week.active));
-                nodes.push(Timeline.generateNode(`Season end`, this.state.season.end.format('LL'), 'AAs can rest now', false));
+                let nodes = this.state.weeks.map(week => Timeline.generateNode(`Squadron battles, ${week.br.toFixed(1)}`, week.start.format('LL'), week.message, week.active));
+                nodes.push(Timeline.generateNode(`Season end`, this.state.season.end.format('LL'), '', false));
                 return React.createElement('ul', { className: 'timeline p-3' }, nodes);
             } else {
                 return React.createElement('div', {}, 'Loading weeks...');

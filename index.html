@@ -13,14 +13,25 @@
     <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
     <script src="scripts/main.js"></script>
     <script>
+        let createBattleRatingDescription = (br, mes) => ({ br: br, message: mes });
         const timeFramesData = [
             [4, 10],
             [17, 1]
         ]; // Moscow timezone
-        const battleRatings = [4, 4.7, 5.3, 6, 6.7, 7.3, 8, 9, 10];
+        const battleRatings = [
+            createBattleRatingDescription(4.0, ""),
+            createBattleRatingDescription(4.7, ""),
+            createBattleRatingDescription(5.3, ""),
+            createBattleRatingDescription(6.0, ""),
+            createBattleRatingDescription(6.7, ""),
+            createBattleRatingDescription(7.3, ""),
+            createBattleRatingDescription(8.0, ""),
+            createBattleRatingDescription(9.0, ""),
+            createBattleRatingDescription(10.0, "")
+        ];
     </script>
 </head>
-<title>Squadorn battles schedule</title>
+<title>Squadron battles schedule</title>
 
 <body>
     <div class="container">
